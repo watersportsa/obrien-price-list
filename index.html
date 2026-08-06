@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O'Brien — Dealer Price List &amp; Order Form</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --navy:#0B2545;
+    --navy-deep:#071A33;
+    --foam:#F6F8FA;
+    --coral:#FF5A3C;
+    --teal:#1B98A0;
+    --line:#E2E7ED;
+    --text:#0B2545;
+    --muted:#5C6B7A;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--foam);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    padding-bottom:100px;
+  }
+  header{
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%);
+    color:#fff;
+    padding:36px 24px 44px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:14px;
+    background:
+      radial-gradient(circle at 10px 0, transparent 9px, var(--foam) 10px) repeat-x;
+    background-size:20px 14px;
+  }
+  .header-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .eyebrow{
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--teal);
+    font-weight:600;
+    margin:0 0 6px;
+  }
+  h1{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:42px;
+    letter-spacing:.01em;
+    margin:0 0 8px;
+    text-transform:uppercase;
+  }
+  header p.tagline{
+    margin:0;
+    color:#B9C6D6;
+    font-size:15px;
+    max-width:520px;
+  }
+  .pdf-btn{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.25);
+    color:#fff;
+    border-radius:8px;
+    padding:12px 18px;
+    font-size:14px;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    white-space:nowrap;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .pdf-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.4);}
+  .pdf-btn:disabled{opacity:.5;cursor:not-allowed;}
+  .pdf-btn svg{width:16px;height:16px;flex-shrink:0;}
+
+  /* ---- Sticky category nav ---- */
+  .cat-nav-wrap{
+    position:sticky;
+    top:0;
+    z-index:40;
+    background:#fff;
+    border-bottom:1px solid var(--line);
+    box-shadow:0 2px 10px rgba(11,37,69,.04);
+  }
+  .cat-nav-inner{
+    max-width:1080px;
+    margin:0 auto;
+    padding:10px 24px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    position:relative;
+  }
+  .cat-select-label{
+    font-size:12px;
+    font-weight:600;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    flex-shrink:0;
+    display:none;
+  }
+  .cat-tabs-scroll{
+    position:relative;
+    flex:1;
+    min-width:0;
+  }
+  .cat-tabs-scroll::before,
+  .cat-tabs-scroll::after{
+    content:"";
+    position:absolute;
+    top:0; bottom:0;
+    width:24px;
+    pointer-events:none;
+    z-index:2;
+    opacity:0;
+    transition:opacity .15s ease;
+  }
+  .cat-tabs-scroll::before{
+    left:0;
+    background:linear-gradient(90deg, #fff, rgba(255,255,255,0));
+  }
+  .cat-tabs-scroll::after{
+    right:0;
+    background:linear-gradient(270deg, #fff, rgba(255,255,255,0));
+  }
+  .cat-tabs-scroll.fade-left::before{opacity:1;}
+  .cat-tabs-scroll.fade-right::after{opacity:1;}
+  .cat-tabs{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    scrollbar-width:thin;
+    scrollbar-color:var(--line) transparent;
+  }
+  .cat-tabs::-webkit-scrollbar{height:6px;}
+  .cat-tabs::-webkit-scrollbar-track{background:transparent;}
+  .cat-tabs::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;}
+  .cat-tabs::-webkit-scrollbar-thumb:hover{background:#C7CDD6;}
+  .cat-tab{
+    flex-shrink:0;
+    background:var(--foam);
+    border:1px solid var(--line);
+    color:var(--navy);
+    border-radius:999px;
+    padding:8px 16px;
+    font-size:13px;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .cat-tab:hover{background:#E9EDF2;}
+  .cat-tab.active{
+    background:var(--navy);
+    color:#fff;
+    border-color:var(--navy);
+  }
+  .cat-nav-arrow{
+    flex-shrink:0;
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--navy);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .cat-nav-arrow:hover{background:var(--foam);}
+  .cat-nav-arrow svg{width:16px;height:16px;}
+  .cat-nav-arrow[hidden]{display:none;}
+  .cat-select{
+    display:none;
+    flex:1;
+    padding:9px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    color:var(--navy);
+    background:#fff;
+  }
+  @media (max-width:640px){
+    .cat-tabs-scroll{display:none;}
+    .cat-nav-arrow{display:none;}
+    .cat-select{display:block;}
+    .cat-select-label{display:block;}
+  }
+
+  main{
+    max-width:1080px;
+    margin:0 auto;
+    padding:32px 24px;
+  }
+  #status{
+    text-align:center;
+    color:var(--muted);
+    padding:40px 0;
+    font-size:14px;
+  }
+  .category-section{
+    margin-bottom:40px;
+    scroll-margin-top:76px;
+  }
+  .category-heading{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:24px;
+    text-transform:uppercase;
+    letter-spacing:.02em;
+    color:var(--navy);
+    margin:0 0 16px;
+    padding-bottom:8px;
+    border-bottom:2px solid var(--line);
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:18px;
+  }
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    transition:box-shadow .15s ease, transform .15s ease;
+  }
+  .card:hover{
+    box-shadow:0 8px 24px rgba(11,37,69,.10);
+    transform:translateY(-2px);
+  }
+  .thumb{
+    width:100%;
+    aspect-ratio:1/1;
+    background:#EEF1F5;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  .thumb img{width:100%;height:100%;object-fit:cover;}
+  .card-body{
+    padding:14px 14px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    flex:1;
+  }
+  .name{
+    font-size:14.5px;
+    font-weight:600;
+    line-height:1.3;
+    min-height:37px;
+  }
+  .sku{font-size:11.5px;color:var(--muted);letter-spacing:.02em;}
+  .stock{font-size:12px;color:var(--teal);font-weight:600;}
+  .stock.low{color:var(--coral);}
+  .price{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:24px;
+    font-weight:700;
+    color:var(--navy);
+    margin-top:auto;
+  }
+  .qty-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .stepper{
+    display:flex;
+    align-items:center;
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .stepper button{
+    width:32px;height:32px;
+    border:none;
+    background:var(--foam);
+    color:var(--navy);
+    font-size:16px;
+    cursor:pointer;
+  }
+  .stepper button:hover{background:var(--line);}
+  .stepper input{
+    width:38px;
+    text-align:center;
+    border:none;
+    font-size:14px;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+    -moz-appearance:textfield;
+  }
+  .stepper input::-webkit-outer-spin-button,
+  .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+
+  .orderbar{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    background:#fff;
+    border-top:1px solid var(--line);
+    box-shadow:0 -6px 24px rgba(11,37,69,.08);
+    padding:14px 24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:20px;
+    flex-wrap:wrap;
+    z-index:30;
+  }
+  .orderbar .summary{font-size:14px;color:var(--muted);}
+  .orderbar .summary strong{color:var(--navy);}
+  .wa-btn{
+    background:var(--coral);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:13px 26px;
+    font-size:15px;
+    font-weight:700;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    transition:filter .15s ease;
+  }
+  .wa-btn:hover{filter:brightness(1.06);}
+  .wa-btn:disabled{background:#C7CDD6;cursor:not-allowed;}
+
+  .config-note{
+    max-width:1080px;
+    margin:0 auto 20px;
+    padding:12px 16px;
+    background:#FFF4EC;
+    border:1px solid #FFD9C4;
+    border-radius:8px;
+    font-size:13px;
+    color:#8A4522;
+    display:none;
+  }
+
+  /* ---- Scroll to top ---- */
+  .scroll-top-btn{
+    position:fixed;
+    right:24px;
+    bottom:96px;
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    box-shadow:0 6px 18px rgba(11,37,69,.25);
+    opacity:0;
+    pointer-events:none;
+    transform:translateY(10px);
+    transition:opacity .2s ease, transform .2s ease, background .15s ease;
+    z-index:35;
+  }
+  .scroll-top-btn.visible{
+    opacity:1;
+    pointer-events:auto;
+    transform:translateY(0);
+  }
+  .scroll-top-btn:hover{background:var(--navy-deep);}
+  .scroll-top-btn svg{width:20px;height:20px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <p class="eyebrow">Dealer &amp; Trade</p>
+      <h1>O'Brien Price List</h1>
+      <p class="tagline">Live in-stock pricing. Set quantities below and send your order straight through on WhatsApp.</p>
+    </div>
+    <button class="pdf-btn" id="pdfBtn" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      <span id="pdfBtnLabel">Download PDF Price List</span>
+    </button>
+  </div>
+</header>
+
+<div class="cat-nav-wrap" id="catNavWrap">
+  <div class="cat-nav-inner">
+    <span class="cat-select-label">Jump to:</span>
+    <button class="cat-nav-arrow" id="catScrollLeft" aria-label="Scroll categories left" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="cat-tabs-scroll" id="catTabsScroll">
+      <div class="cat-tabs" id="catTabs"></div>
+    </div>
+    <button class="cat-nav-arrow" id="catScrollRight" aria-label="Scroll categories right" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <select class="cat-select" id="catSelect"></select>
+  </div>
+</div>
+
+<main>
+  <div class="config-note" id="configNote">
+    Showing demo data — connect your live feed by setting <code>APPS_SCRIPT_URL</code> in this file.
+  </div>
+  <div id="status">Loading current stock…</div>
+  <div id="categoryContainer"></div>
+</main>
+
+<div class="orderbar">
+  <div class="summary" id="summary"><strong>0</strong> items selected</div>
+  <button class="wa-btn" id="sendBtn" disabled>
+    Send Order via WhatsApp
+  </button>
+</div>
+
+<button class="scroll-top-btn" id="scrollTopBtn" aria-label="Scroll to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+
+<script>
+  // ====================== CONFIG ======================
+  // Paste your deployed Apps Script Web App URL here:
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZ7mie5hWlYNl3arxIyo_MGFxCGEkBBKSxbVljkN6DyhjyjwihcHbWuCBmcCiMLqrt3g/exec"; // e.g. "https://script.google.com/macros/s/XXXX/exec"
+  // WhatsApp number to receive orders, international format, digits only:
+  const WHATSAPP_NUMBER = "27117211490"; // <-- replace with your real number
+  // ======================================================
+
+  const DEMO_PRODUCTS = [
+    { id: 1, name: "O'Brien Valhalla Wakeboard 143", price: "5555.00", sku: "OB-VAL-143", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=Valhalla+143", stock_quantity: 4 },
+    { id: 2, name: "O'Brien Valhalla Wakeboard 133", price: "5555.00", sku: "OB-VAL-133", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=Valhalla+133", stock_quantity: 2 },
+    { id: 3, name: "O'Brien Clutch Wakeboard Bindings 4-8", price: "2499.00", sku: "9-2181385", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=Clutch+Bindings", stock_quantity: 7 },
+    { id: 4, name: "O'Brien V2 Freeboard Kneeboard", price: "4870.00", sku: "9-2261214", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=V2+Freeboard", stock_quantity: null },
+    { id: 5, name: "O'Brien Slalom Sequence Ski 69\" W/Z9", price: "10140.00", sku: "9-2240542", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=Sequence+Ski", stock_quantity: 1 },
+    { id: 6, name: "O'Brien Division RTP Ski Binding 10-12", price: "2415.00", sku: "9-2181432", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=Division+RTP", stock_quantity: 5 },
+    { id: 7, name: "O'Brien LeTube Towable Tube", price: "1999.00", sku: "OB-LETUBE", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=LeTube", stock_quantity: 9 },
+    { id: 8, name: "O'Brien 3/4 Pro Skin Gloves LG", price: "1000.00", sku: "9-2252356", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=Pro+Skin+Gloves", stock_quantity: 3 },
+    { id: 9, name: "O'Brien Wake Combo Rope 4 Section Poly-E Blue", price: "700.00", sku: "9-2214552", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=Wake+Combo+Rope", stock_quantity: 12 },
+    { id: 10, name: "O'Brien Pro Wing Black", price: "369.00", sku: "9-2154707", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=Pro+Wing", stock_quantity: 20 }
+  ];
+
+  // Fallback keyword matchers — only used when a product has no
+  // backend-supplied `categories` array (older feed / edge cases).
+  const FALLBACK_CATEGORY_RULES = [
+    { label: "Wakeboards",         match: [/wakeboard(?!.*(bag|bind))/i, /\bwkbd\b/i, /\bvalhalla\b/i, /\bsystem\b.*\b\d{2,3}\b/i] },
+    { label: "Wakeboard Bindings", match: [/wakeboard.*binding/i, /\bbndg\b.*clutch/i, /\bclutch\b/i, /\bbndg\b.*(division|plush|700|z9|lace|x7|600)/i] },
+    { label: "Kneeboards",         match: [/kneeboard/i, /\bfreeboard\b/i, /\bknbd\b/i] },
+    { label: "Slalom Skis",        match: [/slalom/i, /\bsequence\b/i] },
+    { label: "Ski Bindings",       match: [/ski.*binding/i, /\brtp\b/i, /binding.*ski/i] },
+    { label: "Tubes",              match: [/\btube\b/i, /\bdaloo\b/i, /\btubester\b/i] },
+    { label: "Gloves",             match: [/glove/i] },
+    { label: "Ropes & Handles",    match: [/\brope\b/i, /\bhandle\b/i, /\bbridle\b/i, /\bharness\b/i, /combo.*rope/i] },
+    { label: "Accessories",        match: [/\bvalve\b/i, /\bpro wing\b/i, /\bfin kit\b/i, /\bpump\b/i, /\bbar kit\b/i, /\bstrap\b/i, /\bboard sock\b/i, /\bbag\b/i] }
+  ];
+
+  // Normalises whatever the backend calls a category into the label
+  // we want shown (handles "Ropes", "Ropes and Handles", etc.)
+  const CATEGORY_LABEL_OVERRIDES = {
+    "ropes": "Ropes & Handles",
+    "ropes & handles": "Ropes & Handles",
+    "ropes and handles": "Ropes & Handles",
+    "handles": "Ropes & Handles",
+    "rope": "Ropes & Handles"
+  };
+
+  // Preferred display order; anything not listed is sorted alphabetically after these.
+  const CATEGORY_ORDER = [
+    "Wakeboards", "Wakeboard Bindings", "Kneeboards", "Slalom Skis",
+    "Ski Bindings", "Tubes", "Gloves", "Ropes & Handles", "Accessories"
+  ];
+
+  const state = {}; // id -> { product, qty }
+  let currentProducts = [];       // raw feed as received
+  let categorizedProducts = {};   // key -> { label, items: [...] }
+
+  function fmtZAR(n){
+    const num = Number(n);
+    if (!isFinite(num)) return "Price on request";
+    return "R" + num.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function slugify(str){
+    return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "other";
+  }
+
+  // WooCommerce/WordPress often store & return taxonomy + product names
+  // with HTML entities baked into the string itself (e.g. the literal
+  // text "Ropes &amp; Handles" instead of "Ropes & Handles"). Since we
+  // render most text via textContent (which does NOT decode entities),
+  // those show up on-screen exactly as-is. Decode once, at the source.
+  const _entityDecoder = document.createElement("textarea");
+  function decodeHtmlEntities(str){
+    if (!str) return str;
+    _entityDecoder.innerHTML = str;
+    return _entityDecoder.value;
+  }
+
+  function normalizeCategoryLabel(raw){
+    const decoded = decodeHtmlEntities(String(raw)).trim();
+    const key = decoded.toLowerCase();
+    return CATEGORY_LABEL_OVERRIDES[key] || decoded;
+  }
+
+  /**
+   * Flattens the v2 feed shape into one row per purchasable item.
+   * Simple products stay as-is. Variable products (e.g. gloves sold
+   * by size) are expanded into one row per in-stock variation, each
+   * with its own price/sku/stock and a name suffixed with the option
+   * (e.g. "O'Brien Pro Skin Gloves — Large").
+   */
+  function flattenProducts(products){
+    const flat = [];
+    products.forEach(p => {
+      const cleanBaseName = decodeHtmlEntities(p.name);
+      if (p.type === "variable" && Array.isArray(p.variations)){
+        p.variations.forEach(v => {
+          flat.push({
+            id: `${p.id}-${v.id}`,
+            name: cleanBaseName + (v.option ? ` — ${decodeHtmlEntities(v.option)}` : ""),
+            baseName: cleanBaseName,
+            price: v.price,
+            sku: v.sku,
+            stock_quantity: v.stock_quantity,
+            image: p.image,
+            permalink: p.permalink,
+            categories: p.categories
+          });
+        });
+      } else {
+        flat.push({
+          id: String(p.id),
+          name: cleanBaseName,
+          baseName: cleanBaseName,
+          price: p.price,
+          sku: p.sku,
+          stock_quantity: p.stock_quantity,
+          image: p.image,
+          permalink: p.permalink,
+          categories: p.categories
+        });
+      }
+    });
+    return flat;
+  }
+
+  function categorize(flatProducts){
+    const buckets = {};
+    flatProducts.forEach(p => {
+      let label = null;
+
+      if (Array.isArray(p.categories) && p.categories.length){
+        const best = p.categories.find(c => !/^(obrien|o'?brien|uncategori[sz]ed)$/i.test(c.trim())) || p.categories[0];
+        label = normalizeCategoryLabel(best);
+      } else {
+        for (const rule of FALLBACK_CATEGORY_RULES){
+          if (rule.match.some(rx => rx.test(p.baseName))){ label = rule.label; break; }
+        }
+      }
+      if (!label) label = "Other";
+
+      const key = slugify(label);
+      if (!buckets[key]) buckets[key] = { label, items: [] };
+      buckets[key].items.push(p);
+    });
+    return buckets;
+  }
+
+  function orderedCategoryEntries(buckets){
+    return Object.entries(buckets)
+      .map(([key, val]) => ({ key, label: val.label, items: val.items }))
+      .sort((a, b) => {
+        const ia = CATEGORY_ORDER.indexOf(a.label);
+        const ib = CATEGORY_ORDER.indexOf(b.label);
+        if (ia === -1 && ib === -1) return a.label.localeCompare(b.label);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+  }
+
+  function buildCategoryNav(orderedCats){
+    const tabsEl = document.getElementById("catTabs");
+    const selectEl = document.getElementById("catSelect");
+    tabsEl.innerHTML = "";
+    selectEl.innerHTML = "";
+
+    orderedCats.forEach((cat, i) => {
+      const btn = document.createElement("button");
+      btn.className = "cat-tab" + (i === 0 ? " active" : "");
+      btn.textContent = cat.label;
+      btn.dataset.key = cat.key;
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".cat-tab").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectEl.value = cat.key;
+        scrollToCategory(cat.key);
+        btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      });
+      tabsEl.appendChild(btn);
+
+      const opt = document.createElement("option");
+      opt.value = cat.key;
+      opt.textContent = cat.label;
+      selectEl.appendChild(opt);
+    });
+
+    selectEl.addEventListener("change", () => {
+      document.querySelectorAll(".cat-tab").forEach(b => {
+        b.classList.toggle("active", b.dataset.key === selectEl.value);
+      });
+      scrollToCategory(selectEl.value);
+    });
+
+    // Give the browser a tick to lay out the (possibly overflowing) tabs
+    // before measuring scroll width for the arrows/fades.
+    requestAnimationFrame(updateCatScrollUI);
+  }
+
+  function scrollToCategory(key){
+    const el = document.getElementById("cat-section-" + key);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // ---- Desktop category tab horizontal scroll (arrows + fade edges) ----
+  const catTabsScroll = document.getElementById("catTabsScroll");
+  const catTabs = document.getElementById("catTabs");
+  const catScrollLeft = document.getElementById("catScrollLeft");
+  const catScrollRight = document.getElementById("catScrollRight");
+
+  function updateCatScrollUI(){
+    const overflowing = catTabs.scrollWidth > catTabs.clientWidth + 2;
+    const atStart = catTabs.scrollLeft <= 2;
+    const atEnd = catTabs.scrollLeft + catTabs.clientWidth >= catTabs.scrollWidth - 2;
+
+    catScrollLeft.hidden = !overflowing || atStart;
+    catScrollRight.hidden = !overflowing || atEnd;
+    catTabsScroll.classList.toggle("fade-left", overflowing && !atStart);
+    catTabsScroll.classList.toggle("fade-right", overflowing && !atEnd);
+  }
+
+  catTabs.addEventListener("scroll", updateCatScrollUI);
+  window.addEventListener("resize", updateCatScrollUI);
+  catScrollLeft.addEventListener("click", () => {
+    catTabs.scrollBy({ left: -220, behavior: "smooth" });
+  });
+  catScrollRight.addEventListener("click", () => {
+    catTabs.scrollBy({ left: 220, behavior: "smooth" });
+  });
+
+  function render(products){
+    currentProducts = products;
+    const flat = flattenProducts(products);
+    const buckets = categorize(flat);
+    categorizedProducts = buckets;
+    const orderedCats = orderedCategoryEntries(buckets);
+    buildCategoryNav(orderedCats);
+
+    const container = document.getElementById("categoryContainer");
+    container.innerHTML = "";
+
+    orderedCats.forEach(cat => {
+      const items = cat.items;
+      if (!items || !items.length) return;
+
+      const section = document.createElement("section");
+      section.className = "category-section";
+      section.id = "cat-section-" + cat.key;
+
+      const heading = document.createElement("h2");
+      heading.className = "category-heading";
+      heading.textContent = cat.label;
+      section.appendChild(heading);
+
+      const grid = document.createElement("div");
+      grid.className = "grid";
+
+      items.forEach(p => {
+        state[p.id] = state[p.id] || { product: p, qty: 0 };
+
+        const hasQty = p.stock_quantity !== null && p.stock_quantity !== undefined && p.stock_quantity !== "";
+        const qtyNum = hasQty ? Number(p.stock_quantity) : null;
+        const stockHtml = hasQty
+          ? `<div class="stock${qtyNum <= 3 ? " low" : ""}">${qtyNum} in stock</div>`
+          : "";
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="thumb">${p.image ? `<img src="${p.image}" alt="${p.name}" loading="lazy">` : ""}</div>
+          <div class="card-body">
+            <div class="name">${p.name}</div>
+            ${p.sku ? `<div class="sku">SKU ${p.sku}</div>` : ""}
+            ${stockHtml}
+            <div class="price">${fmtZAR(p.price)}</div>
+            <div class="qty-row">
+              <div class="stepper">
+                <button data-action="dec" data-id="${p.id}" aria-label="Decrease quantity">−</button>
+                <input type="number" min="0" value="${state[p.id].qty}" data-id="${p.id}" aria-label="Quantity">
+                <button data-action="inc" data-id="${p.id}" aria-label="Increase quantity">+</button>
+              </div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      section.appendChild(grid);
+      container.appendChild(section);
+    });
+
+    container.querySelectorAll("button[data-action]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.id;
+        const input = container.querySelector(`input[data-id="${id}"]`);
+        let val = parseInt(input.value || "0", 10);
+        val = btn.dataset.action === "inc" ? val + 1 : Math.max(0, val - 1);
+        input.value = val;
+        state[id].qty = val;
+        updateSummary();
+      });
+    });
+    container.querySelectorAll("input[data-id]").forEach(input => {
+      input.addEventListener("input", () => {
+        const val = Math.max(0, parseInt(input.value || "0", 10));
+        state[input.dataset.id].qty = val;
+        updateSummary();
+      });
+    });
+
+    document.getElementById("pdfBtn").disabled = !products.length;
+  }
+
+  function updateSummary(){
+    const items = Object.values(state).filter(s => s.qty > 0);
+    const totalItems = items.reduce((sum, s) => sum + s.qty, 0);
+    const totalValue = items.reduce((sum, s) => sum + s.qty * (Number(s.product.price) || 0), 0);
+    document.getElementById("summary").innerHTML =
+      `<strong>${totalItems}</strong> item${totalItems === 1 ? "" : "s"} selected` +
+      (totalItems ? ` — <strong>${fmtZAR(totalValue)}</strong>` : "");
+    document.getElementById("sendBtn").disabled = totalItems === 0;
+  }
+
+  function sendOrder(){
+    const items = Object.values(state).filter(s => s.qty > 0);
+    if (!items.length) return;
+    let msg = "New O'Brien Order:\n\n";
+    let total = 0;
+    items.forEach(s => {
+      const lineTotal = s.qty * (Number(s.product.price) || 0);
+      total += lineTotal;
+      msg += `• ${s.product.name} x${s.qty} — ${fmtZAR(lineTotal)}\n`;
+    });
+    msg += `\nTotal: ${fmtZAR(total)}`;
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+  }
+
+  document.getElementById("sendBtn").addEventListener("click", sendOrder);
+
+  // ---- Scroll to top ----
+  const scrollTopBtn = document.getElementById("scrollTopBtn");
+  window.addEventListener("scroll", () => {
+    scrollTopBtn.classList.toggle("visible", window.scrollY > 400);
+  });
+  scrollTopBtn.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  // ---- PDF export ----
+  function todayStamp(){
+    const d = new Date();
+    const opts = { day: "2-digit", month: "long", year: "numeric" };
+    return d.toLocaleDateString("en-ZA", opts);
+  }
+
+  // Fetches a product thumbnail and normalises it to a small JPEG data
+  // URL via canvas, so jsPDF can embed it regardless of the source
+  // format (webp/png/etc). Returns null (silently) if it can't be
+  // loaded — the PDF row just renders without a thumbnail in that case.
+  const _pdfImageCache = new Map();
+  function loadPdfThumb_(url, maxPx){
+    if (!url) return Promise.resolve(null);
+    if (_pdfImageCache.has(url)) return _pdfImageCache.get(url);
+
+    const p = (async () => {
+      try {
+        const res = await fetch(url, { mode: "cors" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        try {
+          const img = await new Promise((resolve, reject) => {
+            const el = new Image();
+            el.onload = () => resolve(el);
+            el.onerror = () => reject(new Error("decode failed"));
+            el.src = objectUrl;
+          });
+          const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+          const w = Math.max(1, Math.round(img.naturalWidth * scale));
+          const h = Math.max(1, Math.round(img.naturalHeight * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          return { dataUrl: canvas.toDataURL("image/jpeg", 0.85), w, h };
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      } catch (err) {
+        console.warn("PDF thumbnail failed for", url, err);
+        return null;
+      }
+    })();
+
+    _pdfImageCache.set(url, p);
+    return p;
+  }
+
+  async function generatePdf(){
+    if (!currentProducts.length) return;
+
+    const pdfBtn = document.getElementById("pdfBtn");
+    const pdfBtnLabel = document.getElementById("pdfBtnLabel");
+    pdfBtn.disabled = true;
+    const originalLabel = pdfBtnLabel.textContent;
+    pdfBtnLabel.textContent = "Preparing images…";
+
+    try {
+      const orderedCats = orderedCategoryEntries(categorizedProducts);
+
+      // Preload every unique thumbnail once, in parallel, before we start drawing.
+      const uniqueImageUrls = [...new Set(
+        orderedCats.flatMap(cat => cat.items.map(p => p.image)).filter(Boolean)
+      )];
+      const THUMB_PX = 96; // rendered resolution before jsPDF scales it down
+      await Promise.all(uniqueImageUrls.map(url => loadPdfThumb_(url, THUMB_PX)));
+
+      pdfBtnLabel.textContent = "Generating PDF…";
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 40;
+      let y = 50;
+
+      const navy = [11, 37, 69];
+      const line = [200, 206, 214];
+
+      const ROW_H = 34;         // taller rows to fit a thumbnail
+      const THUMB_SIZE = 26;    // thumbnail box size on the page
+      const THUMB_COL_W = 40;   // column width reserved for the thumbnail
+      const SKU_COL_X = THUMB_COL_W + 8;
+      const SKU_COL_W = 100;
+      const DESC_COL_X = SKU_COL_X + SKU_COL_W + 10;
+
+      function drawHeader(){
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(20);
+        doc.setTextColor(navy[0], navy[1], navy[2]);
+        doc.text(todayStamp(), marginX, y);
+
+        doc.setFontSize(20);
+        doc.text("O'BRIEN", pageWidth - marginX, y, { align: "right" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(90, 90, 90);
+        doc.text("https://shop.manex.co.za/", pageWidth - marginX, y + 16, { align: "right" });
+
+        y += 34;
+        doc.setDrawColor(line[0], line[1], line[2]);
+        doc.setLineWidth(1);
+        doc.line(marginX, y, pageWidth - marginX, y);
+        y += 22;
+      }
+
+      function ensureSpace(rowHeight){
+        if (y + rowHeight > pageHeight - 50){
+          doc.addPage();
+          y = 50;
+          drawHeader();
+        }
+      }
+
+      function drawTableHeader(){
+        doc.setFillColor(navy[0], navy[1], navy[2]);
+        doc.rect(marginX, y, pageWidth - marginX * 2, 20, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.text("", marginX + 8, y + 14);
+        doc.text("PART NUMBER", marginX + SKU_COL_X, y + 14);
+        doc.text("DESCRIPTION", marginX + DESC_COL_X, y + 14);
+        doc.text("RRP INCL VAT", pageWidth - marginX - 8, y + 14, { align: "right" });
+        y += 20;
+      }
+
+      drawHeader();
+
+      for (const cat of orderedCats) {
+        const items = cat.items;
+        if (!items || !items.length) continue;
+
+        ensureSpace(50);
+
+        doc.setFillColor(230, 234, 239);
+        doc.rect(marginX, y, pageWidth - marginX * 2, 20, "F");
+        doc.setTextColor(navy[0], navy[1], navy[2]);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text(cat.label.toUpperCase(), pageWidth / 2, y + 14, { align: "center" });
+        y += 20;
+
+        drawTableHeader();
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(20, 20, 20);
+        doc.setFontSize(9);
+
+        for (let idx = 0; idx < items.length; idx++) {
+          const p = items[idx];
+          ensureSpace(ROW_H);
+          if (idx % 2 === 1){
+            doc.setFillColor(246, 248, 250);
+            doc.rect(marginX, y, pageWidth - marginX * 2, ROW_H, "F");
+          }
+          doc.setDrawColor(line[0], line[1], line[2]);
+          doc.rect(marginX, y, pageWidth - marginX * 2, ROW_H);
+
+          // Thumbnail
+          if (p.image) {
+            const thumb = await loadPdfThumb_(p.image, THUMB_PX);
+            if (thumb && thumb.dataUrl) {
+              const boxX = marginX + 6;
+              const boxY = y + (ROW_H - THUMB_SIZE) / 2;
+              const ar = thumb.w / thumb.h;
+              let dw = THUMB_SIZE, dh = THUMB_SIZE;
+              if (ar > 1) dh = THUMB_SIZE / ar; else dw = THUMB_SIZE * ar;
+              const dx = boxX + (THUMB_SIZE - dw) / 2;
+              const dy = boxY + (THUMB_SIZE - dh) / 2;
+              try {
+                doc.addImage(thumb.dataUrl, "JPEG", dx, dy, dw, dh);
+              } catch (e) {
+                console.warn("addImage failed for", p.image, e);
+              }
+            }
+          }
+
+          const sku = p.sku || "";
+          const desc = p.name || "";
+          const price = fmtZAR(p.price).replace("R", "R ");
+          const textY = y + ROW_H / 2 + 3;
+
+          doc.text(sku, marginX + SKU_COL_X, textY, { maxWidth: SKU_COL_W });
+          doc.text(desc, marginX + DESC_COL_X, textY, { maxWidth: pageWidth - marginX * 2 - DESC_COL_X - 90 });
+          doc.text(price, pageWidth - marginX - 8, textY, { align: "right" });
+
+          y += ROW_H;
+        }
+
+        y += 18;
+      }
+
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(
+        `Generated ${todayStamp()} — reflects live in-stock availability at time of download.`,
+        marginX, pageHeight - 24
+      );
+
+      const fileStamp = new Date().toISOString().slice(0, 10);
+      doc.save(`OBrien-Price-List-${fileStamp}.pdf`);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      alert("Sorry, the PDF couldn't be generated. Check the browser console for details.");
+    } finally {
+      pdfBtn.disabled = !currentProducts.length;
+      pdfBtnLabel.textContent = originalLabel;
+    }
+  }
+
+  document.getElementById("pdfBtn").addEventListener("click", generatePdf);
+
+  async function load(){
+    const statusEl = document.getElementById("status");
+    if (!APPS_SCRIPT_URL){
+      document.getElementById("configNote").style.display = "block";
+      render(DEMO_PRODUCTS);
+      statusEl.style.display = "none";
+      updateSummary();
+      return;
+    }
+    try{
+      const res = await fetch(APPS_SCRIPT_URL);
+      if (!res.ok) throw new Error(`Feed returned HTTP ${res.status}`);
+      const products = await res.json();
+      if (!Array.isArray(products)) throw new Error("Feed did not return a JSON array");
+      if (!products.length) throw new Error("Feed returned 0 in-stock products");
+      render(products);
+      statusEl.style.display = "none";
+      updateSummary();
+    }catch(err){
+      // Surface the real error instead of hiding it — check the browser
+      // console for the full stack trace if this message isn't enough.
+      console.error("O'Brien feed load failed:", err);
+      statusEl.textContent = `Couldn't load the live feed (${err.message}) — showing demo data instead.`;
+      statusEl.style.display = "block";
+      render(DEMO_PRODUCTS);
+      updateSummary();
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
