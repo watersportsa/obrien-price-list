@@ -811,45 +811,99 @@
   // format (webp/png/etc). Returns null (silently) if it can't be
   // loaded — the PDF row just renders without a thumbnail in that case.
   const _pdfImageCache = new Map();
+
+  // Most WooCommerce/WordPress media hosts don't send CORS headers, so a
+  // direct fetch() of the product image URL from the browser fails
+  // silently. images.weserv.nl is a free public image proxy that fetches
+  // the image server-side and re-serves it WITH CORS headers, so we fall
+  // back to it whenever the direct fetch is blocked. It also happens to
+  // resize/re-encode for us, which keeps the PDF small.
+  function toProxiedImageUrl_(url, size){
+    try {
+      const noProto = url.replace(/^https?:\/\//i, "");
+      return `https://images.weserv.nl/?url=${encodeURIComponent(noProto)}&w=${size}&h=${size}&fit=inside&output=jpg`;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function fetchImageBlob_(url){
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.blob();
+  }
+
   function loadPdfThumb_(url, maxPx){
     if (!url) return Promise.resolve(null);
     if (_pdfImageCache.has(url)) return _pdfImageCache.get(url);
 
     const p = (async () => {
+      let blob = null;
+
+      // Try the original URL first (works fine for hosts that do allow
+      // cross-origin fetches, e.g. the placehold.co demo images).
       try {
-        const res = await fetch(url, { mode: "cors" });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const blob = await res.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        try {
-          const img = await new Promise((resolve, reject) => {
-            const el = new Image();
-            el.onload = () => resolve(el);
-            el.onerror = () => reject(new Error("decode failed"));
-            el.src = objectUrl;
-          });
-          const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
-          const w = Math.max(1, Math.round(img.naturalWidth * scale));
-          const h = Math.max(1, Math.round(img.naturalHeight * scale));
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(img, 0, 0, w, h);
-          return { dataUrl: canvas.toDataURL("image/jpeg", 0.85), w, h };
-        } finally {
-          URL.revokeObjectURL(objectUrl);
+        blob = await fetchImageBlob_(url);
+      } catch (directErr) {
+        // Fall back to the CORS-friendly proxy.
+        const proxied = toProxiedImageUrl_(url, maxPx * 2);
+        if (!proxied) {
+          console.warn("PDF thumbnail failed for", url, directErr);
+          return null;
         }
+        try {
+          blob = await fetchImageBlob_(proxied);
+        } catch (proxyErr) {
+          console.warn("PDF thumbnail failed (direct + proxy) for", url, proxyErr);
+          return null;
+        }
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      try {
+        const img = await new Promise((resolve, reject) => {
+          const el = new Image();
+          el.onload = () => resolve(el);
+          el.onerror = () => reject(new Error("decode failed"));
+          el.src = objectUrl;
+        });
+        const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        return { dataUrl: canvas.toDataURL("image/jpeg", 0.85), w, h };
       } catch (err) {
-        console.warn("PDF thumbnail failed for", url, err);
+        console.warn("PDF thumbnail failed to decode for", url, err);
         return null;
+      } finally {
+        URL.revokeObjectURL(objectUrl);
       }
     })();
 
     _pdfImageCache.set(url, p);
     return p;
+  }
+
+  // Runs `fn` over `items` with at most `limit` in flight at once, so we
+  // don't fire 50+ simultaneous requests at the image proxy.
+  async function mapWithConcurrency_(items, limit, fn){
+    const results = new Array(items.length);
+    let next = 0;
+    async function worker(){
+      while (next < items.length){
+        const idx = next++;
+        results[idx] = await fn(items[idx], idx);
+      }
+    }
+    const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
+    await Promise.all(workers);
+    return results;
   }
 
   async function generatePdf(){
@@ -869,7 +923,7 @@
         orderedCats.flatMap(cat => cat.items.map(p => p.image)).filter(Boolean)
       )];
       const THUMB_PX = 96; // rendered resolution before jsPDF scales it down
-      await Promise.all(uniqueImageUrls.map(url => loadPdfThumb_(url, THUMB_PX)));
+      await mapWithConcurrency_(uniqueImageUrls, 5, url => loadPdfThumb_(url, THUMB_PX));
 
       pdfBtnLabel.textContent = "Generating PDF…";
 
