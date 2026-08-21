@@ -9,7 +9,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
 
   :root{
-    --navy:#0B2545;
+    --navy:#0B2546;
     --navy-deep:#071A33;
     --foam:#F6F8FA;
     --coral:#FF5A3C;
@@ -92,7 +92,6 @@
   .pdf-btn:disabled{opacity:.5;cursor:not-allowed;}
   .pdf-btn svg{width:16px;height:16px;flex-shrink:0;}
 
-  /* ---- Sticky category nav ---- */
   .cat-nav-wrap{
     position:sticky;
     top:0;
@@ -369,7 +368,6 @@
     display:none;
   }
 
-  /* ---- Scroll to top ---- */
   .scroll-top-btn{
     position:fixed;
     right:24px;
@@ -434,7 +432,7 @@
 
 <main>
   <div class="config-note" id="configNote">
-    Showing demo data — connect your live feed by setting <code>APPS_SCRIPT_URL</code> in this file.
+    Showing demo data — the live feed couldn't be reached (static file and Apps Script both failed). Check the browser console for details.
   </div>
   <div id="status">Loading current stock…</div>
   <div id="categoryContainer"></div>
@@ -453,8 +451,16 @@
 
 <script>
   // ====================== CONFIG ======================
-  // Paste your deployed Apps Script Web App URL here:
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZ7mie5hWlYNl3arxIyo_MGFxCGEkBBKSxbVljkN6DyhjyjwihcHbWuCBmcCiMLqrt3g/exec"; // e.g. "https://script.google.com/macros/s/XXXX/exec"
+  // Fast path: static file committed to this same repo by the Apps Script
+  // trigger on every successful refresh. Same-origin, served by GitHub's
+  // CDN, no cold start. This is what loads on a normal page visit.
+  const PRODUCTS_JSON_URL = "./products.json";
+
+  // Slow fallback: the Apps Script Web App itself. Only used if the static
+  // file is missing or fails to load (e.g. GitHub sync hasn't run yet, or
+  // this specific fetch hit a transient network issue). May cold-start.
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZ7mie5hWlYNl3arxIyo_MGFxCGEkBBKSxbVljkN6DyhjyjwihcHbWuCBmcCiMLqrt3g/exec";
+
   // WhatsApp number to receive orders, international format, digits only:
   const WHATSAPP_NUMBER = "27117211490"; // <-- replace with your real number
   // ======================================================
@@ -472,8 +478,6 @@
     { id: 10, name: "O'Brien Pro Wing Black", price: "369.00", sku: "9-2154707", image: "https://placehold.co/400x400/EEF1F5/0B2545?text=Pro+Wing", stock_quantity: 20 }
   ];
 
-  // Fallback keyword matchers — only used when a product has no
-  // backend-supplied `categories` array (older feed / edge cases).
   const FALLBACK_CATEGORY_RULES = [
     { label: "Wakeboards",         match: [/wakeboard(?!.*(bag|bind))/i, /\bwkbd\b/i, /\bvalhalla\b/i, /\bsystem\b.*\b\d{2,3}\b/i] },
     { label: "Wakeboard Bindings", match: [/wakeboard.*binding/i, /\bbndg\b.*clutch/i, /\bclutch\b/i, /\bbndg\b.*(division|plush|700|z9|lace|x7|600)/i] },
@@ -486,8 +490,6 @@
     { label: "Accessories",        match: [/\bvalve\b/i, /\bpro wing\b/i, /\bfin kit\b/i, /\bpump\b/i, /\bbar kit\b/i, /\bstrap\b/i, /\bboard sock\b/i, /\bbag\b/i] }
   ];
 
-  // Normalises whatever the backend calls a category into the label
-  // we want shown (handles "Ropes", "Ropes and Handles", etc.)
   const CATEGORY_LABEL_OVERRIDES = {
     "ropes": "Ropes & Handles",
     "ropes & handles": "Ropes & Handles",
@@ -496,15 +498,14 @@
     "rope": "Ropes & Handles"
   };
 
-  // Preferred display order; anything not listed is sorted alphabetically after these.
   const CATEGORY_ORDER = [
     "Wakeboards", "Wakeboard Bindings", "Kneeboards", "Slalom Skis",
     "Ski Bindings", "Tubes", "Gloves", "Ropes & Handles", "Accessories"
   ];
 
-  const state = {}; // id -> { product, qty }
-  let currentProducts = [];       // raw feed as received
-  let categorizedProducts = {};   // key -> { label, items: [...] }
+  const state = {};
+  let currentProducts = [];
+  let categorizedProducts = {};
 
   function fmtZAR(n){
     const num = Number(n);
@@ -516,11 +517,6 @@
     return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "other";
   }
 
-  // WooCommerce/WordPress often store & return taxonomy + product names
-  // with HTML entities baked into the string itself (e.g. the literal
-  // text "Ropes &amp; Handles" instead of "Ropes & Handles"). Since we
-  // render most text via textContent (which does NOT decode entities),
-  // those show up on-screen exactly as-is. Decode once, at the source.
   const _entityDecoder = document.createElement("textarea");
   function decodeHtmlEntities(str){
     if (!str) return str;
@@ -534,13 +530,6 @@
     return CATEGORY_LABEL_OVERRIDES[key] || decoded;
   }
 
-  /**
-   * Flattens the v2 feed shape into one row per purchasable item.
-   * Simple products stay as-is. Variable products (e.g. gloves sold
-   * by size) are expanded into one row per in-stock variation, each
-   * with its own price/sku/stock and a name suffixed with the option
-   * (e.g. "O'Brien Pro Skin Gloves — Large").
-   */
   function flattenProducts(products){
     const flat = [];
     products.forEach(p => {
@@ -644,8 +633,6 @@
       scrollToCategory(selectEl.value);
     });
 
-    // Give the browser a tick to lay out the (possibly overflowing) tabs
-    // before measuring scroll width for the arrows/fades.
     requestAnimationFrame(updateCatScrollUI);
   }
 
@@ -654,7 +641,6 @@
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // ---- Desktop category tab horizontal scroll (arrows + fade edges) ----
   const catTabsScroll = document.getElementById("catTabsScroll");
   const catTabs = document.getElementById("catTabs");
   const catScrollLeft = document.getElementById("catScrollLeft");
@@ -790,7 +776,6 @@
 
   document.getElementById("sendBtn").addEventListener("click", sendOrder);
 
-  // ---- Scroll to top ----
   const scrollTopBtn = document.getElementById("scrollTopBtn");
   window.addEventListener("scroll", () => {
     scrollTopBtn.classList.toggle("visible", window.scrollY > 400);
@@ -799,25 +784,14 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  // ---- PDF export ----
   function todayStamp(){
     const d = new Date();
     const opts = { day: "2-digit", month: "long", year: "numeric" };
     return d.toLocaleDateString("en-ZA", opts);
   }
 
-  // Fetches a product thumbnail and normalises it to a small JPEG data
-  // URL via canvas, so jsPDF can embed it regardless of the source
-  // format (webp/png/etc). Returns null (silently) if it can't be
-  // loaded — the PDF row just renders without a thumbnail in that case.
   const _pdfImageCache = new Map();
 
-  // Most WooCommerce/WordPress media hosts don't send CORS headers, so a
-  // direct fetch() of the product image URL from the browser fails
-  // silently. images.weserv.nl is a free public image proxy that fetches
-  // the image server-side and re-serves it WITH CORS headers, so we fall
-  // back to it whenever the direct fetch is blocked. It also happens to
-  // resize/re-encode for us, which keeps the PDF small.
   function toProxiedImageUrl_(url, size){
     try {
       const noProto = url.replace(/^https?:\/\//i, "");
@@ -840,12 +814,9 @@
     const p = (async () => {
       let blob = null;
 
-      // Try the original URL first (works fine for hosts that do allow
-      // cross-origin fetches, e.g. the placehold.co demo images).
       try {
         blob = await fetchImageBlob_(url);
       } catch (directErr) {
-        // Fall back to the CORS-friendly proxy.
         const proxied = toProxiedImageUrl_(url, maxPx * 2);
         if (!proxied) {
           console.warn("PDF thumbnail failed for", url, directErr);
@@ -890,8 +861,6 @@
     return p;
   }
 
-  // Runs `fn` over `items` with at most `limit` in flight at once, so we
-  // don't fire 50+ simultaneous requests at the image proxy.
   async function mapWithConcurrency_(items, limit, fn){
     const results = new Array(items.length);
     let next = 0;
@@ -918,11 +887,10 @@
     try {
       const orderedCats = orderedCategoryEntries(categorizedProducts);
 
-      // Preload every unique thumbnail once, in parallel, before we start drawing.
       const uniqueImageUrls = [...new Set(
         orderedCats.flatMap(cat => cat.items.map(p => p.image)).filter(Boolean)
       )];
-      const THUMB_PX = 96; // rendered resolution before jsPDF scales it down
+      const THUMB_PX = 96;
       await mapWithConcurrency_(uniqueImageUrls, 5, url => loadPdfThumb_(url, THUMB_PX));
 
       pdfBtnLabel.textContent = "Generating PDF…";
@@ -937,9 +905,9 @@
       const navy = [11, 37, 69];
       const line = [200, 206, 214];
 
-      const ROW_H = 34;         // taller rows to fit a thumbnail
-      const THUMB_SIZE = 26;    // thumbnail box size on the page
-      const THUMB_COL_W = 40;   // column width reserved for the thumbnail
+      const ROW_H = 34;
+      const THUMB_SIZE = 26;
+      const THUMB_COL_W = 40;
       const SKU_COL_X = THUMB_COL_W + 8;
       const SKU_COL_W = 100;
       const DESC_COL_X = SKU_COL_X + SKU_COL_W + 10;
@@ -1018,7 +986,6 @@
           doc.setDrawColor(line[0], line[1], line[2]);
           doc.rect(marginX, y, pageWidth - marginX * 2, ROW_H);
 
-          // Thumbnail
           if (p.image) {
             const thumb = await loadPdfThumb_(p.image, THUMB_PX);
             if (thumb && thumb.dataUrl) {
@@ -1073,33 +1040,62 @@
 
   document.getElementById("pdfBtn").addEventListener("click", generatePdf);
 
+  // ---- Fetch chain: static products.json -> Apps Script Web App -> demo ----
+
+  async function fetchWithTimeout_(url, timeoutMs){
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { signal: controller.signal, cache: "no-store" });
+    } finally {
+      clearTimeout(id);
+    }
+  }
+
+  async function fetchJsonProducts_(url, timeoutMs){
+    const res = await fetchWithTimeout_(url, timeoutMs);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const products = await res.json();
+    if (!Array.isArray(products)) throw new Error("Response was not a JSON array");
+    if (!products.length) throw new Error("Feed returned 0 in-stock products");
+    return products;
+  }
+
   async function load(){
     const statusEl = document.getElementById("status");
-    if (!APPS_SCRIPT_URL){
-      document.getElementById("configNote").style.display = "block";
-      render(DEMO_PRODUCTS);
-      statusEl.style.display = "none";
-      updateSummary();
-      return;
-    }
-    try{
-      const res = await fetch(APPS_SCRIPT_URL);
-      if (!res.ok) throw new Error(`Feed returned HTTP ${res.status}`);
-      const products = await res.json();
-      if (!Array.isArray(products)) throw new Error("Feed did not return a JSON array");
-      if (!products.length) throw new Error("Feed returned 0 in-stock products");
+
+    // 1. Fast path — static file, same origin, no cold start. Cache-busted
+    //    so a stale browser cache never masks a fresh commit.
+    try {
+      const products = await fetchJsonProducts_(`${PRODUCTS_JSON_URL}?t=${Date.now()}`, 5000);
       render(products);
       statusEl.style.display = "none";
       updateSummary();
-    }catch(err){
-      // Surface the real error instead of hiding it — check the browser
-      // console for the full stack trace if this message isn't enough.
-      console.error("O'Brien feed load failed:", err);
-      statusEl.textContent = `Couldn't load the live feed (${err.message}) — showing demo data instead.`;
-      statusEl.style.display = "block";
-      render(DEMO_PRODUCTS);
-      updateSummary();
+      return;
+    } catch (err) {
+      console.warn("Static products.json load failed, trying Apps Script:", err.message || err);
     }
+
+    // 2. Slower fallback — the Apps Script Web App directly. Give it real
+    //    time to cold-start rather than failing fast.
+    if (APPS_SCRIPT_URL) {
+      try {
+        const products = await fetchJsonProducts_(APPS_SCRIPT_URL, 15000);
+        render(products);
+        statusEl.style.display = "none";
+        updateSummary();
+        return;
+      } catch (err) {
+        console.warn("Apps Script feed also failed:", err.message || err);
+      }
+    }
+
+    // 3. Last resort — demo data, with a visible note so this is obvious.
+    document.getElementById("configNote").style.display = "block";
+    statusEl.textContent = "Couldn't load the live feed — showing demo data instead.";
+    statusEl.style.display = "block";
+    render(DEMO_PRODUCTS);
+    updateSummary();
   }
 
   load();
