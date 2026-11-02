@@ -531,40 +531,43 @@
   }
 
   function flattenProducts(products){
-    const flat = [];
-    products.forEach(p => {
-      const cleanBaseName = decodeHtmlEntities(p.name);
-      if (p.type === "variable" && Array.isArray(p.variations)){
-        p.variations.forEach(v => {
-          flat.push({
-            id: `${p.id}-${v.id}`,
-            name: cleanBaseName + (v.option ? ` — ${decodeHtmlEntities(v.option)}` : ""),
-            baseName: cleanBaseName,
-            price: v.price,
-            sku: v.sku,
-            stock_quantity: v.stock_quantity,
-            image: p.image,
-            permalink: p.permalink,
-            categories: p.categories
-          });
-        });
-      } else {
+  const flat = [];
+  // Treat unknown quantity (not tracked) as available; hide 0 or negative.
+  const inStock = q => q === null || q === undefined || q === "" || Number(q) > 0;
+
+  products.forEach(p => {
+    const cleanBaseName = decodeHtmlEntities(p.name);
+    if (p.type === "variable" && Array.isArray(p.variations)){
+      p.variations.filter(v => inStock(v.stock_quantity)).forEach(v => {
         flat.push({
-          id: String(p.id),
-          name: cleanBaseName,
+          id: `${p.id}-${v.id}`,
+          name: cleanBaseName + (v.option ? ` — ${decodeHtmlEntities(v.option)}` : ""),
           baseName: cleanBaseName,
-          price: p.price,
-          sku: p.sku,
-          stock_quantity: p.stock_quantity,
+          price: v.price,
+          sku: v.sku,
+          stock_quantity: v.stock_quantity,
           image: p.image,
           permalink: p.permalink,
           categories: p.categories
         });
-      }
-    });
-    return flat;
-  }
-
+      });
+    } else if (inStock(p.stock_quantity)) {
+      flat.push({
+        id: String(p.id),
+        name: cleanBaseName,
+        baseName: cleanBaseName,
+        price: p.price,
+        sku: p.sku,
+        stock_quantity: p.stock_quantity,
+        image: p.image,
+        permalink: p.permalink,
+        categories: p.categories
+      });
+    }
+  });
+  return flat;
+}
+  
   function categorize(flatProducts){
     const buckets = {};
     flatProducts.forEach(p => {
