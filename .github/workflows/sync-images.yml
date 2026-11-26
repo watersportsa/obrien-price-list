@@ -3,13 +3,21 @@ on:
   schedule:
     - cron: "15 */6 * * *"
   workflow_dispatch:
+  push:
+    paths:
+      - "products.json"
+      - "manual-images/**"
+      - "scripts/sync-images.mjs"
+concurrency:
+  group: mirror-images
+  cancel-in-progress: false
 permissions:
   contents: write
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: node scripts/sync-images.mjs
       - run: |
           git config user.name "image-sync"
