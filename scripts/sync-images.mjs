@@ -54,13 +54,20 @@ await fs.mkdir("images", { recursive: true });
 const urls = [...new Set(products.map((p) => p && p.image).filter(Boolean))];
 const map = {};
 for (const url of urls) {
-  const file = localName(url);
-  try { await fs.access(file); map[url] = file; continue; } catch {}
-  const buf = await download(url);
-  if (!buf) continue;
-  await fs.writeFile(file, buf);
-  map[url] = file;
-  console.log("Saved", file);
+  try {
+    // Already a local repo path (written by the Apps Script sync): nothing to download
+    if (!/^https?:\/\//i.test(url)) { map[url] = url; continue; }
+
+    const file = localName(url);
+    try { await fs.access(file); map[url] = file; continue; } catch {}
+    const buf = await download(url);
+    if (!buf) continue;
+    await fs.writeFile(file, buf);
+    map[url] = file;
+    console.log("Saved", file);
+  } catch (e) {
+    console.warn("Skipping bad URL:", url, e.message);
+  }
 }
 
 // ---- Apply manual images by SKU, collect gaps ----
@@ -68,7 +75,7 @@ const usedManual = new Set();
 const missing = [];
 for (const p of products) {
   if (!p) continue;
-  const skus = [p.sku, ...(p.variations || []).map((v) => v.sku)].filter(Boolean);
+  const skus = [p.sku, ...(Array.isArray(p.variations) ? p.variations : []).map((v) => v.sku)].filter(Boolean);
   let hasManualParent = false;
   for (const sku of skus) {
     const m = manualBySku[String(sku).toLowerCase()];
