@@ -547,7 +547,7 @@
           price: v.price,
           sku: v.sku,
           stock_quantity: v.stock_quantity,
-          image: imageMap[p.image] || p.image,
+          image: imageMap["sku:" + v.sku] || imageMap["sku:" + p.sku] || imageMap[p.image] || p.image,
           permalink: p.permalink,
           categories: p.categories
         });
@@ -560,7 +560,7 @@
         price: p.price,
         sku: p.sku,
         stock_quantity: p.stock_quantity,
-        image: imageMap[p.image] || p.image,
+        image: imageMap["sku:" + p.sku] || imageMap[p.image] || p.image,
         permalink: p.permalink,
         categories: p.categories
       });
