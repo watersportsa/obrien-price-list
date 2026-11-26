@@ -504,6 +504,7 @@
   ];
 
   const state = {};
+  let imageMap = {};
   let currentProducts = [];
   let categorizedProducts = {};
 
@@ -546,7 +547,7 @@
           price: v.price,
           sku: v.sku,
           stock_quantity: v.stock_quantity,
-          image: p.image,
+          image: imageMap[p.image] || p.image,
           permalink: p.permalink,
           categories: p.categories
         });
@@ -559,7 +560,7 @@
         price: p.price,
         sku: p.sku,
         stock_quantity: p.stock_quantity,
-        image: p.image,
+        image: imageMap[p.image] || p.image,
         permalink: p.permalink,
         categories: p.categories
       });
@@ -1065,6 +1066,14 @@
   }
 
   async function load(){
+      try {
+    const r = await fetch("image-map.json?t=" + Date.now());
+    if (r.ok) imageMap = await r.json();
+  } catch (e) { /* fall back to remote URLs */ }
+  try {
+    const o = await fetch("image-overrides.json?t=" + Date.now());
+    if (o.ok) imageMap = Object.assign(imageMap, await o.json());
+  } catch (e) { /* no overrides */ }
     const statusEl = document.getElementById("status");
 
     // 1. Fast path — static file, same origin, no cold start. Cache-busted
